@@ -150,7 +150,6 @@
             const start = karyawanData[noid]?.start;
             if (!start) return;
 
-            // Mendapatkan tanggal hari ini (dinormalkan ke format UTC agar akurat)
             const today = new Date();
             const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
             let currentPeriodIdx = 0;
@@ -160,8 +159,6 @@
                 const dEnd = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth() + 1, dStart.getUTCDate() - 1));
                 const label = `Periode ${dStart.getUTCDate()} ${dStart.toLocaleString('id-ID', {month:'short', timeZone: 'UTC'})} - ${dEnd.getUTCDate()} ${dEnd.toLocaleString('id-ID', {month:'short', timeZone: 'UTC'})} ${dEnd.getUTCFullYear()}`;
                 
-                // Cek jika hari ini berada di dalam atau melewati tanggal mulai periode
-                // Ini akan otomatis menyimpan indeks periode yang paling terbaru/sedang berjalan
                 if (todayUTC >= dStart) {
                     currentPeriodIdx = i;
                 }
@@ -169,7 +166,6 @@
                 filter.innerHTML += `<option value="${i}">${label}</option>`;
             }
             
-            // Set dropdown langsung ke periode yang terdeteksi
             filter.value = currentPeriodIdx; 
             renderCalendar();
         }
@@ -184,7 +180,13 @@
             if(!kary) return;
 
             const today = new Date();
+            // 1. Menentukan Tanggal Mulai dan Berakhir dari Periode
             const dStart = new Date(Date.UTC(kary.start.getUTCFullYear(), kary.start.getUTCMonth() + periodIdx, kary.start.getUTCDate()));
+            const dEnd = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth() + 1, dStart.getUTCDate() - 1));
+
+            // 2. Menghitung Jumlah Hari Aktual dalam Periode
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const daysInPeriod = Math.round((dEnd - dStart) / msPerDay) + 1;
 
             const dailyData = {};
             absensiData.filter(r => r.noid === noid).forEach(r => {
@@ -195,19 +197,18 @@
             let totalDurasi = 0, hariMasuk = 0, totalHariKerja = 0, hariBolos = 0, dataLengkap = true;
 
             const offset = dStart.getUTCDay();
-            // Fill empty slots before the start date
             for(let i = 0; i < offset; i++) {
                 view.innerHTML += `<div class="p-1 md:p-2 rounded-lg md:rounded-xl bg-transparent min-h-[70px] md:min-h-[95px]"></div>`;
             }
 
-            // Fungsi bantuan untuk memformat jam (hilangkan detik & nol di depan)
             const formatWaktu = (waktu) => {
                 if (!waktu) return "";
                 const p = waktu.split(':');
                 return p.length >= 2 ? `${parseInt(p[0], 10)}:${p[1]}` : waktu;
             };
 
-            for (let i = 0; i < 31; i++) {
+            // 3. Mengganti perulangan "31" hari dengan "daysInPeriod"
+            for (let i = 0; i < daysInPeriod; i++) {
                 const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
                 const dateStr = d.toISOString().split('T')[0];
                 const data = dailyData[dateStr];
@@ -220,11 +221,9 @@
 
                 if (!isAhad && !isLibur && d <= today) {
                     totalHariKerja++;
-                    // Jika ada data masuk ATAU keluar (termasuk tidak lengkap), dihitung hadir
                     if (hasMasuk || hasKeluar) {
                         hariMasuk++;
                     } else {
-                        // Hanya dihitung bolos/absen jika tidak ada data masuk dan keluar sama sekali
                         hariBolos++;
                     }
                 }
