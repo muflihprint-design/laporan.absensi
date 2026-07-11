@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalender Absensi Karyawan</title>
+    <title>Kalender Absensi Karyawan (Supabase)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 p-2 md:p-8 font-sans">
 
@@ -60,9 +61,9 @@
     </div>
 
     <script>
-        const KARYAWAN_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjHLUyc7UCb79q96AOF4dBMShS2VK1b534TtAYVKdZggSNEm1luLCr9VPh_yD2N2xHNglAcY-Z7Enj/pub?gid=452057664&single=true&output=csv';
-        const ABSENSI_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjHLUyc7UCb79q96AOF4dBMShS2VK1b534TtAYVKdZggSNEm1luLCr9VPh_yD2N2xHNglAcY-Z7Enj/pub?gid=450446063&single=true&output=csv';
-        const LIBUR_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjHLUyc7UCb79q96AOF4dBMShS2VK1b534TtAYVKdZggSNEm1luLCr9VPh_yD2N2xHNglAcY-Z7Enj/pub?gid=1644604723&single=true&output=csv';
+        const SUPABASE_URL = 'https://tigszfvmbpvznotykryx.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZ3N6ZnZtYnB2em5vdHlrcnl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MzQwMjcsImV4cCI6MjA5OTMxMDAyN30.O0-y9FI_sikkPVig2XNDJ_zlTnfJZv-hRirPurs8yQc';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let karyawanData = {};
         let absensiData = [];
@@ -70,42 +71,47 @@
 
         async function fetchData() {
             try {
-                // Tampilkan loading state sementara
                 document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-10 text-gray-500 text-lg flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Memuat Data...</div>';
 
-                const [respKaryawan, respAbsen, respLibur] = await Promise.all([
-                    fetch(KARYAWAN_URL).then(r => r.text()),
-                    fetch(ABSENSI_URL).then(r => r.text()),
-                    fetch(LIBUR_URL).then(r => r.text())
+                const [
+                    { data: employees, error: errEmp },
+                    { data: attendance, error: errAtt },
+                    { data: holidays, error: errHol }
+                ] = await Promise.all([
+                    supabaseClient.from('employees').select('code, name, working_hours, start_date'),
+                    supabaseClient.from('attendance').select('date, "employeeCode", "checkIn", "checkOut"'),
+                    supabaseClient.from('holidays').select('start_date, end_date')
                 ]);
 
-                respKaryawan.split('\n').slice(1).forEach(line => {
-                    const cols = line.split(',');
-                    if (cols.length >= 8) {
-                        const noid = cols[0].trim();
-                        const jamKerja = parseFloat(cols[6]) || 8;
-                        const [y, m, d] = cols[7].trim().split('-').map(Number);
-                        const start = new Date(Date.UTC(y, m - 1, d));
-                        if (noid && !isNaN(start.getTime())) {
-                            karyawanData[noid] = { nama: cols[2].trim(), start, jamKerja };
-                        }
+                if (errEmp) throw errEmp;
+                if (errAtt) throw errAtt;
+                if (errHol) throw errHol;
+
+                employees.forEach(emp => {
+                    const noid = emp.code;
+                    const jamKerja = parseFloat(emp.working_hours) || 8;
+                    const startStr = emp.start_date || '2024-01-01';
+                    const [y, m, d] = startStr.split('-').map(Number);
+                    const start = new Date(Date.UTC(y, m - 1, d));
+                    
+                    if (noid && !isNaN(start.getTime())) {
+                        karyawanData[noid] = { nama: emp.name, start, jamKerja };
                     }
                 });
 
-                absensiData = respAbsen.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
-                    const cols = line.split(',');
-                    const jamRaw = cols[5]?.trim() || "";
-                    return { noid: cols[1]?.trim(), tgl: cols[3]?.trim(), kode: cols[4]?.trim().toLowerCase(), jam: jamRaw };
-                });
+                absensiData = attendance || [];
 
-                respLibur.split('\n').slice(1).forEach(line => {
-                    const cols = line.split(',');
-                    if (cols.length >= 2) {
-                        let dStart = new Date(cols[0].trim());
-                        let dEnd = new Date(cols[1].trim());
-                        for (let d = new Date(dStart); d <= dEnd; d.setDate(d.getDate() + 1)) {
-                            hariLibur.add(d.toISOString().split('T')[0]);
-                        }
+                hariLibur.clear();
+                (holidays || []).forEach(h => {
+                    // Extract hanya tanggal (YYYY-MM-DD) jika ada jam yang terikut
+                    const startStr = h.start_date.split(' ')[0].split('T')[0]; 
+                    const endStr = (h.end_date || h.start_date).split(' ')[0].split('T')[0];
+                    
+                    let dStart = new Date(startStr + 'T00:00:00Z');
+                    let dEnd = new Date(endStr + 'T00:00:00Z');
+                    
+                    for (let d = new Date(dStart); d <= dEnd; d.setUTCDate(d.getUTCDate() + 1)) {
+                        hariLibur.add(d.toISOString().split('T')[0]);
                     }
                 });
                 
@@ -129,8 +135,8 @@
                     document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-8 md:py-12 text-gray-500 text-sm md:text-base font-semibold flex items-center justify-center text-center px-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50">Silakan pilih karyawan pada menu di atas untuk melihat kalender absensi.</div>';
                 }
             } catch (e) { 
-                console.error(e); 
-                document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-10 text-red-500 font-semibold">Gagal memuat data. Silakan periksa koneksi atau URL sumber data Anda.</div>';
+                console.error("Gagal load Supabase:", e); 
+                document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-10 text-red-500 font-semibold text-center">Gagal memuat data dari Database Supabase. Cek console untuk error (Apakah izin/RLS sudah dibuka?).</div>';
             }
         }
 
@@ -139,7 +145,7 @@
             const [h2, m2] = jamKeluar.split(':').map(Number);
             if(isNaN(h1) || isNaN(h2)) return 0;
             let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-            if (diff < 0) diff += 24 * 60; // handle cross-midnight
+            if (diff < 0) diff += 24 * 60; 
             return diff / 60;
         }
 
@@ -180,18 +186,21 @@
             if(!kary) return;
 
             const today = new Date();
-            // 1. Menentukan Tanggal Mulai dan Berakhir dari Periode
             const dStart = new Date(Date.UTC(kary.start.getUTCFullYear(), kary.start.getUTCMonth() + periodIdx, kary.start.getUTCDate()));
             const dEnd = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth() + 1, dStart.getUTCDate() - 1));
 
-            // 2. Menghitung Jumlah Hari Aktual dalam Periode
             const msPerDay = 1000 * 60 * 60 * 24;
             const daysInPeriod = Math.round((dEnd - dStart) / msPerDay) + 1;
 
             const dailyData = {};
-            absensiData.filter(r => r.noid === noid).forEach(r => {
-                if(!dailyData[r.tgl]) dailyData[r.tgl] = { jam: {} };
-                dailyData[r.tgl].jam[r.kode] = r.jam;
+            
+            absensiData.filter(r => r.employeeCode === noid).forEach(r => {
+                dailyData[r.date] = { 
+                    jam: {
+                        masuk: (r.checkIn && r.checkIn !== '--') ? r.checkIn : null,
+                        keluar: (r.checkOut && r.checkOut !== '--') ? r.checkOut : null
+                    } 
+                };
             });
 
             let totalDurasi = 0, hariMasuk = 0, totalHariKerja = 0, hariBolos = 0, dataLengkap = true;
@@ -207,7 +216,6 @@
                 return p.length >= 2 ? `${parseInt(p[0], 10)}:${p[1]}` : waktu;
             };
 
-            // 3. Mengganti perulangan "31" hari dengan "daysInPeriod"
             for (let i = 0; i < daysInPeriod; i++) {
                 const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
                 const dateStr = d.toISOString().split('T')[0];
@@ -231,7 +239,22 @@
                 let bg = 'bg-white border-gray-200', info = "";
 
                 if (isLibur) {
-                    bg = 'bg-blue-300 border-blue-400 shadow-inner text-blue-900';
+                    bg = 'bg-blue-200 border-blue-400 shadow-sm text-blue-900';
+                    // Jika hari libur tapi tetap bekerja
+                    if (hasMasuk || hasKeluar) {
+                        let textDurasi = "";
+                        if (hasMasuk && hasKeluar) {
+                            const durasi = hitungDurasiDecimal(data.jam.masuk, data.jam.keluar);
+                            totalDurasi += durasi;
+                            textDurasi = `<div class="mt-1 px-1 bg-white/40 rounded text-[9px] md:text-[11px] font-bold">${durasi.toFixed(2)}j</div>`;
+                        }
+                        info = `
+                            <div class="text-[9px] md:text-[11px] font-medium mt-0.5 opacity-90">M ${formatWaktu(data.jam.masuk)}</div>
+                            <div class="text-[9px] md:text-[11px] font-medium opacity-90">K ${formatWaktu(data.jam.keluar)}</div>
+                            ${textDurasi}`;
+                    } else {
+                        info = `<div class="text-[9px] md:text-[10px] mt-2 font-bold opacity-75">LIBUR</div>`;
+                    }
                 } else if (hasMasuk && hasKeluar) {
                     bg = 'bg-emerald-500 border-emerald-600 text-white shadow-md transform transition hover:scale-105';
                     const durasi = hitungDurasiDecimal(data.jam.masuk, data.jam.keluar);
