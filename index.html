@@ -78,7 +78,14 @@
                     { data: attendance, error: errAtt },
                     { data: holidays, error: errHol }
                 ] = await Promise.all([
-                    supabaseClient.from('employees').select('code, name, working_hours, start_date'),
+                    // --- PERUBAHAN DI SINI ---
+                    // Menambahkan filter .not() untuk mengecualikan kolom yang bernilai null
+                    supabaseClient
+                        .from('employees')
+                        .select('code, name, working_hours, start_date')
+                        .not('check_in_target', 'is', null)
+                        .not('check_out_target', 'is', null),
+                    // -------------------------
                     supabaseClient.from('attendance').select('date, "employeeCode", "checkIn", "checkOut"'),
                     supabaseClient.from('holidays').select('start_date, end_date')
                 ]);
@@ -103,7 +110,6 @@
 
                 hariLibur.clear();
                 (holidays || []).forEach(h => {
-                    // Extract hanya tanggal (YYYY-MM-DD) jika ada jam yang terikut
                     const startStr = h.start_date.split(' ')[0].split('T')[0]; 
                     const endStr = (h.end_date || h.start_date).split(' ')[0].split('T')[0];
                     
