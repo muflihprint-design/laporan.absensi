@@ -7,22 +7,51 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 p-2 md:p-8 font-sans">
+<body class="bg-gray-100 font-sans">
 
-    <div class="max-w-6xl mx-auto bg-white p-3 md:p-6 rounded-xl shadow-lg border border-gray-100">
-        <h1 class="text-2xl md:text-3xl font-extrabold mb-4 md:mb-6 text-gray-800 tracking-tight text-center md:text-left">Kalender Absensi</h1>
+    <!-- LAYAR LOGIN (OVERLAY) -->
+    <div id="loginOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-100 mx-4">
+            <div class="text-center mb-6">
+                <div class="inline-block p-3 bg-blue-100 text-blue-600 rounded-full mb-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h2 class="text-2xl font-extrabold text-gray-800">Sistem Absensi</h2>
+                <p class="text-xs text-gray-500 mt-1">Silakan pilih nama Anda untuk masuk</p>
+            </div>
+            
+            <div class="mb-5">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Karyawan:</label>
+                <select id="loginSelectDropdown" class="w-full p-3 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"></select>
+            </div>
+            
+            <button onclick="processLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-200">Masuk Aplikasi</button>
+        </div>
+    </div>
+
+    <!-- KONTEN UTAMA APLIKASI -->
+    <div id="mainContent" class="max-w-6xl mx-auto bg-white p-3 md:p-6 rounded-xl shadow-lg border border-gray-100 mt-2 md:mt-8 hidden">
         
-        <!-- TABS NAVIGASI -->
-        <div class="flex border-b border-gray-200 mb-4 md:mb-6">
-            <button id="tabReguler" class="w-1/2 py-2 md:py-3 text-sm md:text-base font-bold text-center border-b-2 border-blue-500 text-blue-600 transition-colors">Karyawan Reguler</button>
-            <button id="tabPartTime" class="w-1/2 py-2 md:py-3 text-sm md:text-base font-bold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors">Karyawan Part Time</button>
+        <!-- Header & Tombol Aksi -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-6 pb-4 border-b border-gray-100">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight text-center md:text-left">Kalender Absensi</h1>
+                <div id="userGreeting" class="text-sm font-semibold text-blue-600 mt-1 text-center md:text-left"></div>
+            </div>
+            
+            <div class="flex gap-2 mt-4 md:mt-0 w-full md:w-auto">
+                <button id="btnManualSend" onclick="triggerManualSend()" class="hidden flex-1 md:flex-none justify-center bg-green-600 text-white text-sm px-4 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition-all"></button>
+                <button onclick="processLogout()" class="flex-1 md:flex-none justify-center bg-rose-100 text-rose-600 text-sm px-4 py-2 rounded-lg font-bold hover:bg-rose-200 transition-all">Logout</button>
+            </div>
         </div>
         
-        <div class="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-6 p-3 md:p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 p-3 md:p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full">
                 <div>
                     <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1">Pilih Karyawan:</label>
                     <select id="employeeSelect" class="w-full p-2 md:p-2.5 text-sm md:text-base border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"></select>
+                    <!-- Indikator Status Karyawan -->
+                    <div id="employeeStatus" class="hidden mt-2 text-xs font-bold px-2.5 py-1 rounded-md inline-block"></div>
                 </div>
                 <div>
                     <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1">Pilih Periode:</label>
@@ -57,16 +86,38 @@
 
         <div id="calendarView" class="grid grid-cols-7 gap-1 md:gap-2 text-center text-sm"></div>
 
-        <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-200 flex flex-wrap gap-2 md:gap-6 text-[10px] md:text-xs font-medium text-gray-600 justify-center">
-            <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-gray-50 rounded-full border border-gray-100"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-emerald-500 mr-1.5 md:mr-2 rounded-full shadow-sm"></span>Lengkap</div>
-            <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-gray-50 rounded-full border border-gray-100"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-amber-400 mr-1.5 md:mr-2 rounded-full shadow-sm"></span>Hanya Masuk</div>
-            <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-gray-50 rounded-full border border-gray-100"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-rose-500 mr-1.5 md:mr-2 rounded-full shadow-sm"></span>Hanya Keluar</div>
-            <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-gray-50 rounded-full border border-gray-100"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-blue-300 mr-1.5 md:mr-2 rounded-full shadow-sm"></span>Libur Bersama</div>
-            <!-- Legenda Khusus Part Time -->
-            <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-rose-50 rounded-full border border-rose-100 text-rose-700"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-rose-500 mr-1.5 md:mr-2 rounded-full shadow-sm animate-pulse"></span>Target Wajib (Part Time)</div>
-            <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-emerald-50 rounded-full border border-emerald-100 text-emerald-700"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-emerald-400 mr-1.5 md:mr-2 rounded-full shadow-sm"></span>Tercover Surplus (Part Time)</div>
+        <!-- KETERANGAN / LEGENDA -->
+        <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-200">
+            <h3 class="text-center text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Keterangan Indikator</h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2 md:gap-4 text-[10px] md:text-xs font-medium text-gray-600">
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-gray-50 rounded-lg md:rounded-full border border-gray-200 w-full md:w-auto shadow-sm">
+                    <span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-emerald-500 mr-2 md:mr-2.5 rounded-full shadow-inner"></span>Lengkap
+                </div>
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-gray-50 rounded-lg md:rounded-full border border-gray-200 w-full md:w-auto shadow-sm">
+                    <span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-amber-400 mr-2 md:mr-2.5 rounded-full shadow-inner"></span>Hanya Masuk
+                </div>
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-gray-50 rounded-lg md:rounded-full border border-gray-200 w-full md:w-auto shadow-sm">
+                    <span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-rose-500 mr-2 md:mr-2.5 rounded-full shadow-inner"></span>Hanya Keluar
+                </div>
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-blue-50/50 rounded-lg md:rounded-full border border-blue-100 text-blue-700 w-full md:w-auto shadow-sm">
+                    <span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-blue-300 mr-2 md:mr-2.5 rounded-full shadow-inner"></span>Libur Bersama
+                </div>
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-rose-50 rounded-lg md:rounded-full border border-rose-200 text-rose-700 w-full md:w-auto shadow-sm">
+                    <span class="relative flex h-3 w-3 md:h-3.5 md:w-3.5 mr-2 md:mr-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 md:h-3.5 md:w-3.5 bg-rose-500 shadow-inner"></span>
+                    </span>
+                    Target Wajib (Part Time)
+                </div>
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-emerald-50 rounded-lg md:rounded-full border border-emerald-200 text-emerald-700 w-full md:w-auto shadow-sm">
+                    <span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-emerald-400 mr-2 md:mr-2.5 rounded-full shadow-inner"></span>Tercover Surplus
+                </div>
+                <div class="flex items-center px-3 py-1.5 md:py-2 bg-indigo-50 rounded-lg md:rounded-full border border-indigo-200 text-indigo-700 w-full md:w-auto shadow-sm">
+                    <span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-blue-500 mr-2 md:mr-2.5 rounded-full shadow-inner"></span>Hadir Luar Shift (+)
+                </div>
+            </div>
         </div>
-        <div class="flex items-center px-2 md:px-3 py-1 md:py-1.5 bg-blue-50 rounded-full border border-blue-100 text-blue-700"><span class="w-3 h-3 md:w-3.5 md:h-3.5 bg-blue-500 mr-1.5 md:mr-2 rounded-full shadow-sm"></span>Hadir Luar Shift (+ Surplus)</div>
     </div>
 
     <script>
@@ -74,60 +125,139 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZ3N6ZnZtYnB2em5vdHlrcnl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MzQwMjcsImV4cCI6MjA5OTMxMDAyN30.O0-y9FI_sikkPVig2XNDJ_zlTnfJZv-hRirPurs8yQc';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
+        let allEmployeesRaw = [];
+        let loggedInUser = null;
+        const ALLOWED_MANUAL_ROLES = ['Bendahara', 'HRD', 'Owner'];
+
         let karyawanData = {};
         let absensiData = [];
         let hariLibur = new Set();
-        let currentTab = 'reguler';
 
-        document.getElementById('tabReguler').addEventListener('click', () => setTab('reguler'));
-        document.getElementById('tabPartTime').addEventListener('click', () => setTab('parttime'));
-
-        function setTab(tab) {
-            currentTab = tab;
-            const tReguler = document.getElementById('tabReguler');
-            const tPartTime = document.getElementById('tabPartTime');
-            
-            if(tab === 'reguler') {
-                tReguler.className = "w-1/2 py-2 md:py-3 text-sm md:text-base font-bold text-center border-b-2 border-blue-500 text-blue-600 transition-colors";
-                tPartTime.className = "w-1/2 py-2 md:py-3 text-sm md:text-base font-bold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors";
+        // ==========================================
+        // FUNGSI AUTENTIKASI (LOGIN & LOGOUT)
+        // ==========================================
+        function checkAuth() {
+            const savedUser = localStorage.getItem('absen_loggedin_user');
+            if (savedUser) {
+                loggedInUser = JSON.parse(savedUser);
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('mainContent').classList.remove('hidden');
+                document.getElementById('userGreeting').innerText = `👋 Halo, ${loggedInUser.name} (${loggedInUser.position})`;
+                
+                // Load UI Data
+                populateEmployeeSelect();
+                updateManualButtonState();
+                checkAndNotifyPartTimeSchedule();
+                subscribeToRealtime();
             } else {
-                tPartTime.className = "w-1/2 py-2 md:py-3 text-sm md:text-base font-bold text-center border-b-2 border-blue-500 text-blue-600 transition-colors";
-                tReguler.className = "w-1/2 py-2 md:py-3 text-sm md:text-base font-bold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors";
+                document.getElementById('loginOverlay').classList.remove('hidden');
+                document.getElementById('mainContent').classList.add('hidden');
             }
-            populateEmployeeSelect();
+        }
+
+        function processLogin() {
+            const selectedCode = document.getElementById('loginSelectDropdown').value;
+            if (!selectedCode) {
+                alert("Silakan pilih nama Anda terlebih dahulu!");
+                return;
+            }
+            const user = allEmployeesRaw.find(e => e.code === selectedCode);
+            if (user) {
+                localStorage.setItem('absen_loggedin_user', JSON.stringify(user));
+                checkAuth();
+            }
+        }
+
+        function processLogout() {
+            localStorage.removeItem('absen_loggedin_user');
+            checkAuth();
+        }
+
+        // ==========================================
+        // FUNGSI BANTUAN TANGGAL & TOMBOL MANUAL
+        // ==========================================
+        function getTodayDateString() {
+            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+        }
+
+        function updateManualButtonState() {
+            const btn = document.getElementById('btnManualSend');
+            
+            // Sembunyikan jika role tidak diizinkan
+            if (!loggedInUser || !ALLOWED_MANUAL_ROLES.includes(loggedInUser.position)) {
+                btn.classList.add('hidden');
+                return;
+            }
+            
+            btn.classList.remove('hidden');
+            const todayStr = getTodayDateString();
+            const lastManualDate = localStorage.getItem('lastManualSendDate');
+            
+            if (lastManualDate === todayStr) {
+                btn.disabled = true;
+                btn.innerText = "✓ WA Terkirim Hari Ini";
+                btn.className = "flex-1 md:flex-none justify-center bg-gray-400 text-white text-sm px-4 py-2 rounded-lg font-bold shadow cursor-not-allowed";
+            } else {
+                btn.disabled = false;
+                btn.innerText = "Kirim WA Manual";
+                btn.className = "flex-1 md:flex-none justify-center bg-green-600 text-white text-sm px-4 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition-all cursor-pointer";
+            }
+        }
+
+        function triggerManualSend() {
+            checkAndNotifyPartTimeSchedule(true);
+        }
+
+        // ==========================================
+        // FETCH DATA & SETUP KALENDER
+        // ==========================================
+        function updateEmployeeStatus(noid) {
+            const statusDiv = document.getElementById('employeeStatus');
+            if (!noid || !karyawanData[noid]) {
+                statusDiv.classList.add('hidden');
+                return;
+            }
+            
+            const isPartTime = karyawanData[noid].position === 'Staf Part Time';
+            statusDiv.classList.remove('hidden');
+            
+            if (isPartTime) {
+                statusDiv.textContent = 'Status: Part Time';
+                statusDiv.className = 'mt-2 text-xs font-bold px-2.5 py-1 rounded-md inline-block bg-purple-100 text-purple-700 border border-purple-200';
+            } else {
+                statusDiv.textContent = 'Status: Reguler';
+                statusDiv.className = 'mt-2 text-xs font-bold px-2.5 py-1 rounded-md inline-block bg-blue-100 text-blue-700 border border-blue-200';
+            }
         }
 
         function populateEmployeeSelect() {
             const select = document.getElementById('employeeSelect');
             select.innerHTML = '<option value="" disabled selected>-- Pilih Karyawan --</option>';
             
-            Object.entries(karyawanData).forEach(([id, info]) => {
-                const isPartTime = info.position === 'Staf Part Time';
-                if ((currentTab === 'parttime' && isPartTime) || (currentTab === 'reguler' && !isPartTime)) {
-                    select.innerHTML += `<option value="${id}">${info.nama}</option>`;
-                }
+            const sortedKaryawan = Object.entries(karyawanData).sort((a, b) => a[1].nama.localeCompare(b[1].nama));
+            sortedKaryawan.forEach(([id, info]) => {
+                const statusStr = info.position === 'Staf Part Time' ? 'Part Time' : 'Reguler';
+                select.innerHTML += `<option value="${id}">${info.nama} (${statusStr})</option>`;
             });
 
             const savedKaryawan = localStorage.getItem('selectedKaryawan');
             if (savedKaryawan && karyawanData[savedKaryawan]) {
-                const isSavedPartTime = karyawanData[savedKaryawan].position === 'Staf Part Time';
-                if ((currentTab === 'parttime' && isSavedPartTime) || (currentTab === 'reguler' && !isSavedPartTime)) {
-                    select.value = savedKaryawan;
-                    updatePeriods();
-                    return;
-                }
+                select.value = savedKaryawan;
+                updateEmployeeStatus(savedKaryawan);
+                updatePeriods();
+                return;
             }
             
             document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-8 md:py-12 text-gray-500 text-sm md:text-base font-semibold flex items-center justify-center text-center px-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50">Silakan pilih karyawan pada menu di atas untuk melihat kalender absensi.</div>';
             document.getElementById('periodFilter').innerHTML = '';
-            document.getElementById('diffHoursDisplay').innerText = "0.00";
-            document.getElementById('attendanceSummary').innerText = "0/0";
-            document.getElementById('absenceSummary').innerText = "0";
         }
 
         async function fetchData() {
             try {
-                document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-10 text-gray-500 text-lg flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Memuat Data...</div>';
+                // Tampilkan loading di layar awal jika belum login
+                const loginSelect = document.getElementById('loginSelectDropdown');
+                loginSelect.innerHTML = '<option value="" disabled selected>Memuat data karyawan...</option>';
 
                 const [
                     { data: employees, error: errEmp },
@@ -147,6 +277,15 @@
                 if (errAtt) throw errAtt;
                 if (errHol) throw errHol;
 
+                allEmployeesRaw = employees;
+
+                // Populate Dropdown Login
+                loginSelect.innerHTML = '<option value="" disabled selected>-- Pilih Nama Anda --</option>';
+                [...allEmployeesRaw].sort((a,b) => a.name.localeCompare(b.name)).forEach(emp => {
+                    loginSelect.innerHTML += `<option value="${emp.code}">${emp.name} (${emp.position})</option>`;
+                });
+
+                karyawanData = {};
                 employees.forEach(emp => {
                     const noid = emp.code;
                     const jamKerja = parseFloat(emp.working_hours) || 8;
@@ -171,10 +310,8 @@
                 (holidays || []).forEach(h => {
                     const startStr = h.start_date.split(' ')[0].split('T')[0]; 
                     const endStr = (h.end_date || h.start_date).split(' ')[0].split('T')[0];
-                    
                     let dStart = new Date(startStr + 'T00:00:00Z');
                     let dEnd = new Date(endStr + 'T00:00:00Z');
-                    
                     for (let d = new Date(dStart); d <= dEnd; d.setUTCDate(d.getUTCDate() + 1)) {
                         hariLibur.add(d.toISOString().split('T')[0]);
                     }
@@ -182,20 +319,18 @@
                 
                 document.getElementById('employeeSelect').addEventListener('change', (e) => {
                     localStorage.setItem('selectedKaryawan', e.target.value);
+                    updateEmployeeStatus(e.target.value);
                     updatePeriods();
                 });
+                
                 document.getElementById('periodFilter').addEventListener('change', renderCalendar);
                 
-                const savedKaryawan = localStorage.getItem('selectedKaryawan');
-                if (savedKaryawan && karyawanData[savedKaryawan]) {
-                    currentTab = karyawanData[savedKaryawan].position === 'Staf Part Time' ? 'parttime' : 'reguler';
-                }
-                
-                setTab(currentTab);
+                // Cek Login setelah data termuat
+                checkAuth();
 
             } catch (e) { 
                 console.error("Gagal load Supabase:", e); 
-                document.getElementById('calendarView').innerHTML = '<div class="col-span-7 py-10 text-red-500 font-semibold text-center">Gagal memuat data dari Database Supabase. Cek console untuk error.</div>';
+                alert("Gagal memuat data dari Database Supabase.");
             }
         }
 
@@ -233,228 +368,411 @@
             renderCalendar();
         }
 
- function renderCalendar() {
-    const noid = document.getElementById('employeeSelect').value;
-    const periodIdx = parseInt(document.getElementById('periodFilter').value);
-    const kary = karyawanData[noid];
-    const view = document.getElementById('calendarView');
-    view.innerHTML = '';
-    
-    if(!kary) return;
-
-    const isPartTime = kary.position === 'Staf Part Time';
-    const shiftDays = parseInt(kary.shift_type) === 2 ? [4, 5, 6] : [1, 2, 3];
-
-    const today = new Date();
-    const dStart = new Date(Date.UTC(kary.start.getUTCFullYear(), kary.start.getUTCMonth() + periodIdx, kary.start.getUTCDate()));
-    const dEnd = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth() + 1, dStart.getUTCDate() - 1));
-
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const daysInPeriod = Math.round((dEnd - dStart) / msPerDay) + 1;
-
-    const dailyData = {};
-    absensiData.filter(r => r.employeeCode === noid).forEach(r => {
-        dailyData[r.date] = { 
-            jam: {
-                masuk: (r.checkIn && r.checkIn !== '--') ? r.checkIn : null,
-                keluar: (r.checkOut && r.checkOut !== '--') ? r.checkOut : null
-            } 
-        };
-    });
-
-    // ====================================================================
-    // PASS 1: KALKULASI SURPLUS MINGGUAN & HARI WAJIB PART-TIME
-    // ====================================================================
-    let wajibDaysSet = new Set();
-    let coveredDaysSet = new Set();
-    
-    if (isPartTime) {
-        let weeks = [];
-        let currentWeek = { targetDays: [], attendedDays: [] };
-        
-        for (let i = 0; i < daysInPeriod; i++) {
-            const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
-            const dateStr = d.toISOString().split('T')[0];
-            const isAhad = d.getUTCDay() === 0;
-            const dayOfWeek = d.getUTCDay();
-            const isLibur = hariLibur.has(dateStr);
-            const data = dailyData[dateStr];
-            const hasMasuk = data && (data.jam.masuk || data.jam.keluar);
+        function renderCalendar() {
+            const noid = document.getElementById('employeeSelect').value;
+            const periodIdx = parseInt(document.getElementById('periodFilter').value);
+            const kary = karyawanData[noid];
+            const view = document.getElementById('calendarView');
+            view.innerHTML = '';
             
-            // Catat hari target (jika hari tersebut adalah jadwal shift & bukan libur)
-            if (!isLibur && shiftDays.includes(dayOfWeek)) {
-                currentWeek.targetDays.push(dateStr);
-            }
-            // Catat kehadiran di hari APAPUN (termasuk di luar shift) 
-            if (hasMasuk) {
-                currentWeek.attendedDays.push(dateStr);
-            }
-            
-            if (isAhad || i === daysInPeriod - 1) {
-                weeks.push(currentWeek);
-                currentWeek = { targetDays: [], attendedDays: [] };
-            }
-        }
-        
-        let balanceSurplus = 0; 
-        weeks.forEach(w => {
-            const requiredCount = Math.max(0, w.targetDays.length - Math.max(0, balanceSurplus));
-            
-            w.targetDays.forEach((td, index) => {
-                if (index < requiredCount) {
-                    wajibDaysSet.add(td);
-                } else {
-                    coveredDaysSet.add(td); // Tercover oleh surplus
-                }
+            if(!kary) return;
+
+            const isPartTime = kary.position === 'Staf Part Time';
+            const shiftDays = parseInt(kary.shift_type) === 2 ? [4, 5, 6] : [1, 2, 3];
+
+            const today = new Date();
+            const dStart = new Date(Date.UTC(kary.start.getUTCFullYear(), kary.start.getUTCMonth() + periodIdx, kary.start.getUTCDate()));
+            const dEnd = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth() + 1, dStart.getUTCDate() - 1));
+
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const daysInPeriod = Math.round((dEnd - dStart) / msPerDay) + 1;
+
+            const dailyData = {};
+            absensiData.filter(r => r.employeeCode === noid).forEach(r => {
+                dailyData[r.date] = { 
+                    jam: {
+                        masuk: (r.checkIn && r.checkIn !== '--') ? r.checkIn : null,
+                        keluar: (r.checkOut && r.checkOut !== '--') ? r.checkOut : null
+                    } 
+                };
             });
+
+            let wajibDaysSet = new Set();
+            let coveredDaysSet = new Set();
             
-            balanceSurplus = balanceSurplus + w.attendedDays.length - w.targetDays.length;
-        });
-    }
-
-    // ====================================================================
-    // PASS 2: RENDER CALENDAR
-    // ====================================================================
-    let totalDurasi = 0, hariMasuk = 0, totalHariKerja = 0, hariBolos = 0, dataLengkap = true;
-
-    const offset = dStart.getUTCDay();
-    for(let i = 0; i < offset; i++) {
-        view.innerHTML += `<div class="p-1 md:p-2 rounded-lg md:rounded-xl bg-transparent min-h-[70px] md:min-h-[95px]"></div>`;
-    }
-
-    const formatWaktu = (waktu) => {
-        if (!waktu) return "";
-        const p = waktu.split(':');
-        return p.length >= 2 ? `${parseInt(p[0], 10)}:${p[1]}` : waktu;
-    };
-
-    for (let i = 0; i < daysInPeriod; i++) {
-        const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
-        const dateStr = d.toISOString().split('T')[0];
-        const data = dailyData[dateStr];
-        
-        const isAhad = d.getUTCDay() === 0;
-        const dayOfWeek = d.getUTCDay();
-        const isLibur = hariLibur.has(dateStr);
-
-        const hasMasuk = data && data.jam.masuk;
-        const hasKeluar = data && data.jam.keluar;
-        const attendedAny = hasMasuk || hasKeluar;
-        
-        const isWajib = isPartTime && wajibDaysSet.has(dateStr);
-        const isCovered = isPartTime && coveredDaysSet.has(dateStr);
-        
-        // Logika Baru: Deteksi Kehadiran Ekstra (Menambah Surplus)
-        const isExtraShift = isPartTime && attendedAny && !shiftDays.includes(dayOfWeek);
-
-        // Perbaikan Rekap Totalan (Summary Atas)
-        if (d <= today) {
             if (isPartTime) {
-                if (shiftDays.includes(dayOfWeek) && !isLibur) totalHariKerja++; 
-                if (attendedAny) hariMasuk++;
-            } else {
-                if (!isAhad && !isLibur) {
-                    totalHariKerja++;
-                    if (attendedAny) hariMasuk++;
-                    else hariBolos++;
-                } else {
-                    if (attendedAny) hariMasuk++; // Jika dipaksa masuk saat libur/ahad
+                let weeks = [];
+                let currentWeek = { targetDays: [], attendedDays: [] };
+                
+                for (let i = 0; i < daysInPeriod; i++) {
+                    const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
+                    const dateStr = d.toISOString().split('T')[0];
+                    const isAhad = d.getUTCDay() === 0;
+                    const dayOfWeek = d.getUTCDay();
+                    const isLibur = hariLibur.has(dateStr);
+                    const data = dailyData[dateStr];
+                    const hasMasuk = data && (data.jam.masuk || data.jam.keluar);
+                    
+                    if (!isLibur && shiftDays.includes(dayOfWeek)) {
+                        currentWeek.targetDays.push(dateStr);
+                    }
+                    if (hasMasuk) {
+                        currentWeek.attendedDays.push(dateStr);
+                    }
+                    
+                    if (isAhad || i === daysInPeriod - 1) {
+                        weeks.push(currentWeek);
+                        currentWeek = { targetDays: [], attendedDays: [] };
+                    }
                 }
+                
+                let balanceSurplus = 0; 
+                weeks.forEach(w => {
+                    const attendedOnTarget = w.targetDays.filter(td => w.attendedDays.includes(td)).length;
+                    const extraAttendances = w.attendedDays.length - attendedOnTarget;
+                    
+                    let availableSurplus = Math.max(0, balanceSurplus) + extraAttendances;
+                    
+                    w.targetDays.forEach(td => {
+                        const attendedThisDay = w.attendedDays.includes(td);
+                        if (availableSurplus > 0 && !attendedThisDay) {
+                            coveredDaysSet.add(td);
+                            availableSurplus--; 
+                        } else {
+                            wajibDaysSet.add(td);
+                        }
+                    });
+                    
+                    balanceSurplus = balanceSurplus + w.attendedDays.length - w.targetDays.length;
+                });
             }
-        }
 
-        let bg = 'bg-white border-gray-200', info = "";
-        let indicator = "";
-
-        // Penambahan Visual Indikator Biru (+)
-        if (isPartTime) {
-            if (isWajib) {
-                indicator = `<span class="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 flex h-3 w-3 md:h-4 md:w-4 z-10" title="Hari Wajib Masuk"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative flex justify-center items-center rounded-full h-full w-full bg-rose-500 shadow border-2 border-white text-[6px] md:text-[8px] text-white font-bold">!</span></span>`;
-            } else if (isCovered) {
-                indicator = `<span class="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 flex h-3 w-3 md:h-4 md:w-4 z-10" title="Shift Tercover Surplus"><span class="relative flex justify-center items-center rounded-full h-full w-full bg-emerald-400 shadow border-2 border-white text-[6px] md:text-[8px] text-white font-bold">✓</span></span>`;
-            } else if (isExtraShift) {
-                indicator = `<span class="absolute -top-1.5 -left-1.5 md:-top-2 md:-left-2 flex h-3 w-3 md:h-4 md:w-4 z-10" title="Kehadiran Ekstra (Menambah Surplus)"><span class="relative flex justify-center items-center rounded-full h-full w-full bg-blue-500 shadow border-2 border-white text-[6px] md:text-[8px] text-white font-bold">+</span></span>`;
+            let totalDurasi = 0, hariMasuk = 0, totalHariKerja = 0, hariBolos = 0, dataLengkap = true;
+            const offset = dStart.getUTCDay();
+            for(let i = 0; i < offset; i++) {
+                view.innerHTML += `<div class="p-1 md:p-2 rounded-lg md:rounded-xl bg-transparent min-h-[70px] md:min-h-[95px]"></div>`;
             }
-        }
 
-        if (isLibur) {
-            bg = 'bg-blue-200 border-blue-400 shadow-sm text-blue-900';
-            if (hasMasuk || hasKeluar) {
-                let textDurasi = "";
-                if (hasMasuk && hasKeluar) {
+            const formatWaktu = (waktu) => {
+                if (!waktu) return "";
+                const p = waktu.split(':');
+                return p.length >= 2 ? `${parseInt(p[0], 10)}:${p[1]}` : waktu;
+            };
+
+            for (let i = 0; i < daysInPeriod; i++) {
+                const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
+                const dateStr = d.toISOString().split('T')[0];
+                const data = dailyData[dateStr];
+                
+                const isAhad = d.getUTCDay() === 0;
+                const dayOfWeek = d.getUTCDay();
+                const isLibur = hariLibur.has(dateStr);
+
+                const hasMasuk = data && data.jam.masuk;
+                const hasKeluar = data && data.jam.keluar;
+                const attendedAny = hasMasuk || hasKeluar;
+                
+                const isWajib = isPartTime && wajibDaysSet.has(dateStr);
+                const isCovered = isPartTime && coveredDaysSet.has(dateStr);
+                const isExtraShift = isPartTime && attendedAny && !shiftDays.includes(dayOfWeek);
+
+                if (d <= today) {
+                    if (isPartTime) {
+                        if (shiftDays.includes(dayOfWeek) && !isLibur) totalHariKerja++; 
+                        if (attendedAny) hariMasuk++;
+                    } else {
+                        if (!isAhad && !isLibur) {
+                            totalHariKerja++;
+                            if (attendedAny) hariMasuk++;
+                            else hariBolos++;
+                        } else {
+                            if (attendedAny) hariMasuk++; 
+                        }
+                    }
+                }
+
+                let bg = 'bg-white border-gray-200', info = "";
+                let indicator = "";
+
+                if (isPartTime) {
+                    if (isWajib) {
+                        indicator = `<span class="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 flex h-3 w-3 md:h-4 md:w-4 z-10" title="Hari Wajib Masuk"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative flex justify-center items-center rounded-full h-full w-full bg-rose-500 shadow border-2 border-white text-[6px] md:text-[8px] text-white font-bold">!</span></span>`;
+                    } else if (isCovered) {
+                        indicator = `<span class="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 flex h-3 w-3 md:h-4 md:w-4 z-10" title="Shift Tercover Surplus"><span class="relative flex justify-center items-center rounded-full h-full w-full bg-emerald-400 shadow border-2 border-white text-[6px] md:text-[8px] text-white font-bold">✓</span></span>`;
+                    } else if (isExtraShift) {
+                        indicator = `<span class="absolute -top-1.5 -left-1.5 md:-top-2 md:-left-2 flex h-3 w-3 md:h-4 md:w-4 z-10" title="Kehadiran Ekstra (Menambah Surplus)"><span class="relative flex justify-center items-center rounded-full h-full w-full bg-blue-500 shadow border-2 border-white text-[6px] md:text-[8px] text-white font-bold">+</span></span>`;
+                    }
+                }
+
+                if (isLibur) {
+                    bg = 'bg-blue-200 border-blue-400 shadow-sm text-blue-900';
+                    if (hasMasuk || hasKeluar) {
+                        let textDurasi = "";
+                        if (hasMasuk && hasKeluar) {
+                            const durasi = hitungDurasiDecimal(data.jam.masuk, data.jam.keluar);
+                            totalDurasi += durasi;
+                            textDurasi = `<div class="mt-1 px-1 bg-white/40 rounded text-[9px] md:text-[11px] font-bold">${durasi.toFixed(2)}j</div>`;
+                        }
+                        info = indicator + `
+                            <div class="text-[9px] md:text-[11px] font-medium mt-0.5 opacity-90">M ${formatWaktu(data.jam.masuk)}</div>
+                            <div class="text-[9px] md:text-[11px] font-medium opacity-90">K ${formatWaktu(data.jam.keluar)}</div>
+                            ${textDurasi}`;
+                    } else {
+                        info = indicator + `<div class="text-[9px] md:text-[10px] mt-2 font-bold opacity-75">LIBUR</div>`;
+                    }
+                } else if (hasMasuk && hasKeluar) {
+                    bg = 'bg-emerald-500 border-emerald-600 text-white shadow-md transform transition hover:scale-105';
                     const durasi = hitungDurasiDecimal(data.jam.masuk, data.jam.keluar);
                     totalDurasi += durasi;
-                    textDurasi = `<div class="mt-1 px-1 bg-white/40 rounded text-[9px] md:text-[11px] font-bold">${durasi.toFixed(2)}j</div>`;
+                    info = indicator + `
+                        <div class="text-[9px] md:text-[11px] leading-tight font-medium opacity-90 mt-0.5 md:mt-1">M ${formatWaktu(data.jam.masuk)}</div>
+                        <div class="text-[9px] md:text-[11px] leading-tight font-medium opacity-90">K ${formatWaktu(data.jam.keluar)}</div>
+                        <div class="mt-1 md:mt-1.5 px-1 md:px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded md:rounded-md text-[9px] md:text-[12px] font-bold shadow-sm">${durasi.toFixed(2)}j</div>`;
+                } else if (hasMasuk) {
+                    bg = 'bg-amber-400 border-amber-500 text-amber-900 shadow-md';
+                    info = indicator + `<div class="text-[9px] md:text-[11px] font-semibold mt-1 md:mt-2 bg-white/30 px-1 md:px-2 py-0.5 md:py-1 rounded md:rounded-md">M ${formatWaktu(data.jam.masuk)}</div>`;
+                    dataLengkap = false;
+                } else if (hasKeluar) {
+                    bg = 'bg-rose-500 border-rose-600 text-white shadow-md';
+                    info = indicator + `<div class="text-[9px] md:text-[11px] font-semibold mt-1 md:mt-2 bg-white/20 px-1 md:px-2 py-0.5 md:py-1 rounded md:rounded-md">K ${formatWaktu(data.jam.keluar)}</div>`;
+                    dataLengkap = false;
+                } else if (d < today && !isLibur && !isAhad) {
+                    if (isPartTime) {
+                        if (isWajib) {
+                            bg = 'bg-red-50 border-red-200 text-red-500 shadow-inner';
+                            info = indicator + `<div class="text-[9px] md:text-[10px] mt-2 font-bold opacity-80 text-red-600">ALFA</div>`;
+                        } else if (isCovered) {
+                            bg = 'bg-emerald-50 border-emerald-100 text-emerald-600 opacity-90';
+                            info = indicator + `<div class="text-[8px] md:text-[9px] mt-2 font-bold opacity-80 text-emerald-700">BEBAS</div>`;
+                        } else {
+                            bg = 'bg-gray-50 border-gray-100 text-gray-300 opacity-70'; 
+                        }
+                    } else {
+                        bg = 'bg-gray-100 border-gray-200 text-gray-400';
+                    }
+                } else if (isAhad) {
+                    bg = 'bg-red-50 border-red-100 text-red-400';
+                } else if (d >= today) {
+                    info = indicator + info;
                 }
-                info = indicator + `
-                    <div class="text-[9px] md:text-[11px] font-medium mt-0.5 opacity-90">M ${formatWaktu(data.jam.masuk)}</div>
-                    <div class="text-[9px] md:text-[11px] font-medium opacity-90">K ${formatWaktu(data.jam.keluar)}</div>
-                    ${textDurasi}`;
-            } else {
-                info = indicator + `<div class="text-[9px] md:text-[10px] mt-2 font-bold opacity-75">LIBUR</div>`;
+                
+                view.innerHTML += `
+                    <div class="p-1 md:p-2 border rounded-lg md:rounded-xl relative ${bg} min-h-[70px] md:min-h-[95px] flex flex-col items-center justify-start pt-1.5 md:pt-3 transition-colors duration-200">
+                        <span class="font-extrabold text-xs md:text-lg">${d.getUTCDate()}</span>
+                        ${info}
+                    </div>`;
             }
-        } else if (hasMasuk && hasKeluar) {
-            bg = 'bg-emerald-500 border-emerald-600 text-white shadow-md transform transition hover:scale-105';
-            const durasi = hitungDurasiDecimal(data.jam.masuk, data.jam.keluar);
-            totalDurasi += durasi;
-            info = indicator + `
-                <div class="text-[9px] md:text-[11px] leading-tight font-medium opacity-90 mt-0.5 md:mt-1">M ${formatWaktu(data.jam.masuk)}</div>
-                <div class="text-[9px] md:text-[11px] leading-tight font-medium opacity-90">K ${formatWaktu(data.jam.keluar)}</div>
-                <div class="mt-1 md:mt-1.5 px-1 md:px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded md:rounded-md text-[9px] md:text-[12px] font-bold shadow-sm">${durasi.toFixed(2)}j</div>`;
-        } else if (hasMasuk) {
-            bg = 'bg-amber-400 border-amber-500 text-amber-900 shadow-md';
-            info = indicator + `<div class="text-[9px] md:text-[11px] font-semibold mt-1 md:mt-2 bg-white/30 px-1 md:px-2 py-0.5 md:py-1 rounded md:rounded-md">M ${formatWaktu(data.jam.masuk)}</div>`;
-            dataLengkap = false;
-        } else if (hasKeluar) {
-            bg = 'bg-rose-500 border-rose-600 text-white shadow-md';
-            info = indicator + `<div class="text-[9px] md:text-[11px] font-semibold mt-1 md:mt-2 bg-white/20 px-1 md:px-2 py-0.5 md:py-1 rounded md:rounded-md">K ${formatWaktu(data.jam.keluar)}</div>`;
-            dataLengkap = false;
-        } else if (d < today && !isLibur && !isAhad) {
+            
             if (isPartTime) {
-                if (isWajib) {
-                    bg = 'bg-red-50 border-red-200 text-red-500 shadow-inner';
-                    info = indicator + `<div class="text-[9px] md:text-[10px] mt-2 font-bold opacity-80 text-red-600">ALFA</div>`;
-                } else if (isCovered) {
-                    bg = 'bg-emerald-50 border-emerald-100 text-emerald-600 opacity-90';
-                    info = indicator + `<div class="text-[8px] md:text-[9px] mt-2 font-bold opacity-80 text-emerald-700">BEBAS</div>`;
-                } else {
-                    bg = 'bg-gray-50 border-gray-100 text-gray-300 opacity-70'; 
-                }
-            } else {
-                bg = 'bg-gray-100 border-gray-200 text-gray-400';
+                hariBolos = Math.max(0, totalHariKerja - hariMasuk);
             }
-        } else if (isAhad) {
-            bg = 'bg-red-50 border-red-100 text-red-400';
-        } else if (d >= today) {
-            info = indicator + info;
+
+            const selisih = totalDurasi - (hariMasuk * kary.jamKerja);
+            const diffDisplay = document.getElementById('diffHoursDisplay');
+            
+            if (dataLengkap) {
+                diffDisplay.innerText = selisih.toFixed(2);
+                diffDisplay.className = selisih >= 0 ? "text-lg md:text-2xl font-black text-emerald-600" : "text-lg md:text-2xl font-black text-rose-600";
+            } else {
+                diffDisplay.innerText = "Tdk Lengkap";
+                diffDisplay.className = "text-[10px] md:text-sm font-bold text-amber-600 flex items-center h-full text-center leading-tight justify-center";
+            }
+            
+            document.getElementById('attendanceSummary').innerText = `${hariMasuk}/${totalHariKerja}`;
+            document.getElementById('absenceSummary').innerText = hariBolos;
         }
+
+        // =========================================================
+        // FITUR NOTIFIKASI WHATSAPP
+        // =========================================================
         
-        view.innerHTML += `
-            <div class="p-1 md:p-2 border rounded-lg md:rounded-xl relative ${bg} min-h-[70px] md:min-h-[95px] flex flex-col items-center justify-start pt-1.5 md:pt-3 transition-colors duration-200">
-                <span class="font-extrabold text-xs md:text-lg">${d.getUTCDate()}</span>
-                ${info}
-            </div>`;
-    }
-    
-    if (isPartTime) {
-        hariBolos = Math.max(0, totalHariKerja - hariMasuk);
-    }
+        async function sendWhatsApp(pesan) {
+            const token = 'cAswYc8237BQhnuGWdBE'; 
+            const targetWA = '120363421730994663@g.us';
+            
+            try {
+                const response = await fetch('https://api.fonnte.com/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': token,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        target: targetWA,
+                        message: pesan,
+                    })
+                });
+                const data = await response.json();
+                console.log('WA Notif Terkirim:', data);
+            } catch (error) {
+                console.error('Gagal mengirim WA:', error);
+            }
+        }
 
-    const selisih = totalDurasi - (hariMasuk * kary.jamKerja);
-    const diffDisplay = document.getElementById('diffHoursDisplay');
-    
-    if (dataLengkap) {
-        diffDisplay.innerText = selisih.toFixed(2);
-        diffDisplay.className = selisih >= 0 ? "text-lg md:text-2xl font-black text-emerald-600" : "text-lg md:text-2xl font-black text-rose-600";
-    } else {
-        diffDisplay.innerText = "Tdk Lengkap";
-        diffDisplay.className = "text-[10px] md:text-sm font-bold text-amber-600 flex items-center h-full text-center leading-tight justify-center";
-    }
-    
-    document.getElementById('attendanceSummary').innerText = `${hariMasuk}/${totalHariKerja}`;
-    document.getElementById('absenceSummary').innerText = hariBolos;
-}
+        function checkAndNotifyPartTimeSchedule(isManualTrigger = false) {
+            const today = new Date();
+            const lookaheadDays = 7; 
+            let newSchedule = {};
 
+            Object.entries(karyawanData).forEach(([noid, kary]) => {
+                if (kary.position !== 'Staf Part Time') return;
+
+                const shiftDays = parseInt(kary.shift_type) === 2 ? [4, 5, 6] : [1, 2, 3];
+                
+                let dStart, dEnd;
+                const start = kary.start;
+                const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+                
+                for (let i = 0; i < 12; i++) {
+                    dStart = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, start.getUTCDate()));
+                    dEnd = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth() + 1, dStart.getUTCDate() - 1));
+                    if (todayUTC >= dStart && todayUTC <= dEnd) break; 
+                }
+                if(!dStart || !dEnd) return;
+
+                const msPerDay = 1000 * 60 * 60 * 24;
+                const daysInPeriod = Math.round((dEnd - dStart) / msPerDay) + 1;
+
+                const dailyData = {};
+                absensiData.filter(r => r.employeeCode === noid).forEach(r => {
+                    dailyData[r.date] = { 
+                        jam: {
+                            masuk: (r.checkIn && r.checkIn !== '--') ? r.checkIn : null,
+                            keluar: (r.checkOut && r.checkOut !== '--') ? r.checkOut : null
+                        } 
+                    };
+                });
+
+                let wajibDaysSet = new Set();
+                let weeks = [];
+                let currentWeek = { targetDays: [], attendedDays: [] };
+                
+                for (let i = 0; i < daysInPeriod; i++) {
+                    const d = new Date(Date.UTC(dStart.getUTCFullYear(), dStart.getUTCMonth(), dStart.getUTCDate() + i));
+                    const dateStr = d.toISOString().split('T')[0];
+                    const isAhad = d.getUTCDay() === 0;
+                    const dayOfWeek = d.getUTCDay();
+                    const isLibur = hariLibur.has(dateStr);
+                    const data = dailyData[dateStr];
+                    const hasMasuk = data && (data.jam.masuk || data.jam.keluar);
+                    
+                    if (!isLibur && shiftDays.includes(dayOfWeek)) currentWeek.targetDays.push(dateStr);
+                    if (hasMasuk) currentWeek.attendedDays.push(dateStr);
+                    
+                    if (isAhad || i === daysInPeriod - 1) {
+                        weeks.push(currentWeek);
+                        currentWeek = { targetDays: [], attendedDays: [] };
+                    }
+                }
+                
+                let balanceSurplus = 0; 
+                weeks.forEach(w => {
+                    const attendedOnTarget = w.targetDays.filter(td => w.attendedDays.includes(td)).length;
+                    const extraAttendances = w.attendedDays.length - attendedOnTarget;
+                    let availableSurplus = Math.max(0, balanceSurplus) + extraAttendances;
+                    
+                    w.targetDays.forEach(td => {
+                        const attendedThisDay = w.attendedDays.includes(td);
+                        if (availableSurplus > 0 && !attendedThisDay) {
+                            availableSurplus--; 
+                        } else {
+                            wajibDaysSet.add(td);
+                        }
+                    });
+                    balanceSurplus = balanceSurplus + w.attendedDays.length - w.targetDays.length;
+                });
+
+                let upcomingWajib = [];
+                for(let i = 1; i <= lookaheadDays; i++) {
+                    let futureDate = new Date();
+                    futureDate.setDate(today.getDate() + i);
+                    let fStr = futureDate.toISOString().split('T')[0];
+                    if (wajibDaysSet.has(fStr)) upcomingWajib.push(fStr);
+                }
+                
+                newSchedule[noid] = upcomingWajib;
+            });
+
+            // Susun Pesan
+            let msg = "📢 *UPDATE JADWAL PART-TIME* 📢\nBerlaku untuk 7 hari ke depan (telah disesuaikan otomatis dengan surplus kehadiran):\n\n";
+            let count = 0;
+            
+            Object.entries(newSchedule).forEach(([noid, dates]) => {
+                const nama = karyawanData[noid].nama;
+                if (dates.length > 0) {
+                    const formattedDates = dates.map(d => {
+                        const dateObj = new Date(d);
+                        return dateObj.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+                    }).join(', ');
+                    msg += `👤 *${nama}*\n   Wajib Masuk: ${formattedDates}\n`;
+                } else {
+                    msg += `👤 *${nama}*\n   Wajib Masuk: Bebas (Telah Tercover) 🎉\n`;
+                }
+                count++;
+            });
+
+            const oldScheduleStr = localStorage.getItem('lastPartTimeSchedule');
+            const newScheduleStr = JSON.stringify(newSchedule);
+            const todayStr = getTodayDateString();
+            const lastManualDate = localStorage.getItem('lastManualSendDate');
+
+            // 1. Jika ini triggered dari klik tombol Manual
+            if (isManualTrigger) {
+                localStorage.setItem('lastManualSendDate', todayStr);
+                localStorage.setItem('lastPartTimeSchedule', newScheduleStr);
+                
+                if (count > 0) {
+                    msg += "\n_Pesan dikirim secara manual_";
+                    sendWhatsApp(msg); 
+                }
+                alert("Pesan pembaruan jadwal berhasil dikirim secara manual.");
+                updateManualButtonState();
+                return;
+            }
+
+            // 2. Jika ini auto trigger (dari data awal / realtime)
+            if (oldScheduleStr === null) {
+                localStorage.setItem('lastPartTimeSchedule', newScheduleStr);
+                return; 
+            }
+
+            // Jika ada perubahan jadwal
+            if (oldScheduleStr !== newScheduleStr) {
+                // Otomatis kirim HANYA JIKA manual send sudah dilakukan hari ini
+                if (lastManualDate === todayStr) {
+                    localStorage.setItem('lastPartTimeSchedule', newScheduleStr);
+                    if (count > 0) {
+                        msg += "\n_Pesan pembaruan otomatis dari Sistem Absensi_";
+                        sendWhatsApp(msg); 
+                    }
+                } else {
+                    console.log("Jadwal berubah, tapi pengiriman manual belum dilakukan untuk hari ini. Menunggu klik manual.");
+                }
+            }
+        }
+
+        // ==========================================
+        // REALTIME LISTENER
+        // ==========================================
+        function subscribeToRealtime() {
+            supabaseClient
+                .channel('tabel-absensi-channel')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'attendance' },
+                    (payload) => {
+                        console.log('Perubahan terdeteksi pada tabel attendance:', payload);
+                        fetchData(); 
+                    }
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Berhasil terhubung ke Supabase Realtime!');
+                    }
+                });
+        }
+
+        // Inisialisasi awal
         window.onload = fetchData;
     </script>
 </body>
