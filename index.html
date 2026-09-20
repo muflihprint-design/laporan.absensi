@@ -587,27 +587,30 @@
         // =========================================================
         
         async function sendWhatsApp(pesan) {
-            const token = 'cAswYc8237BQhnuGWdBE'; 
-            const targetWA = '120363421730994663@g.us';
-            
-            try {
-                const response = await fetch('https://api.fonnte.com/send', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': token,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: new URLSearchParams({
-                        target: targetWA,
-                        message: pesan,
-                    })
-                });
-                const data = await response.json();
-                console.log('WA Notif Terkirim:', data);
-            } catch (error) {
-                console.error('Gagal mengirim WA:', error);
-            }
-        }
+    const token = 'cAswYc8237BQhnuGWdBE'; 
+    const targetWA = '120363421730994663@g.us';
+    
+    // Tambahkan nomor untuk mention di bagian bawah pesan
+    const pesanDenganMention = pesan + "\n\nCc: @6281355730352";
+    
+    try {
+        const response = await fetch('https://api.fonnte.com/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': token,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                target: targetWA,
+                message: pesanDenganMention, // Gunakan pesan yang sudah ditambahkan mention
+            })
+        });
+        const data = await response.json();
+        console.log('WA Notif Terkirim:', data);
+    } catch (error) {
+        console.error('Gagal mengirim WA:', error);
+    }
+}
 
         function checkAndNotifyPartTimeSchedule(isManualTrigger = false) {
             const today = new Date();
